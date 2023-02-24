@@ -8,7 +8,7 @@ const initialState = {
   isAuthenticated: false,
   user: null,
   token: null,
-  role: "admin",
+  role: null,
 };
 
 const reducer = (state, action) => {
@@ -26,6 +26,7 @@ const reducer = (state, action) => {
       };
     case "LOGOUT":
       localStorage.clear();
+
       return {
         isAuthenticated: false,
         token: null,

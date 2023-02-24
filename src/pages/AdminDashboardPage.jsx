@@ -89,6 +89,7 @@ const AdminDashboardPage = () => {
 
   useEffect(() => {
     getData();
+
     if (token === "") setToken(localStorage.getItem("token"));
   }, [getData]);
   return (
@@ -110,8 +111,13 @@ const AdminDashboardPage = () => {
                 color: "#696969",
               }}
               className="flex gap-4 p-2 px-4 rounded-full items-center"
-              onClick={() => {
-                dispatch({ type: " LOGOUT" });
+              onClick={(e) => {
+                e.preventDefault();
+
+                dispatch({
+                  payload: {},
+                  type: "LOGOUT",
+                });
                 navigate("/admin/login");
               }}
             >
