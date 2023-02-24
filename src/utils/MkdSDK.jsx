@@ -12,9 +12,35 @@ export default function MkdSDK() {
   this.setTable = function (table) {
     this._table = table;
   };
-  
+
   this.login = async function (email, password, role) {
     //TODO
+    const loginData = await fetch(
+      "https://reacttask.mkdlabs.com/v2/api/lambda/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Project":
+            "cmVhY3R0YXNrOmQ5aGVkeWN5djZwN3p3OHhpMzR0OWJtdHNqc2lneTV0Nw==",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+          role: role,
+        }),
+      }
+    );
+
+    const returnLogin = await loginData.json();
+    if (loginData.status === 401) {
+      throw new Error(returnLogin.message);
+    }
+
+    if (loginData.status === 403) {
+      throw new Error(returnLogin.message);
+    }
+    return returnLogin;
   };
 
   this.getHeader = function () {
@@ -27,7 +53,7 @@ export default function MkdSDK() {
   this.baseUrl = function () {
     return this._baseurl;
   };
-  
+
   this.callRestAPI = async function (payload, method) {
     const header = {
       "Content-Type": "application/json",
@@ -55,7 +81,7 @@ export default function MkdSDK() {
           throw new Error(jsonGet.message);
         }
         return jsonGet;
-      
+
       case "PAGINATE":
         if (!payload.page) {
           payload.page = 1;
@@ -84,10 +110,31 @@ export default function MkdSDK() {
       default:
         break;
     }
-  };  
+  };
 
   this.check = async function (role) {
     //TODO
+    let token = localStorage.getItem("token");
+    const checkToken = await fetch(
+      "https://reacttask.mkdlabs.com/v2/api/lambda/check",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-Project":
+            "cmVhY3R0YXNrOmQ5aGVkeWN5djZwN3p3OHhpMzR0OWJtdHNqc2lneTV0Nw==",
+        },
+        body: JSON.stringify({
+          role: role,
+        }),
+      }
+    );
+    const isValid = await checkToken.json();
+    if (isValid.status === 200) {
+      return true;
+    }
+    return false;
   };
 
   return this;

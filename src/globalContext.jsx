@@ -47,15 +47,14 @@ export const showToast = (dispatch, message, timeout = 3000) => {
     });
   }, timeout);
 };
-
 const GlobalProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, globalDispatch] = useReducer(reducer, initialState);
 
   return (
     <GlobalContext.Provider
       value={{
         state,
-        dispatch,
+        globalDispatch,
       }}
     >
       {children}
