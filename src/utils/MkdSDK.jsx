@@ -115,6 +115,7 @@ export default function MkdSDK() {
   this.check = async function (role) {
     //TODO
     let token = localStorage.getItem("token");
+
     const checkToken = await fetch(
       "https://reacttask.mkdlabs.com/v2/api/lambda/check",
       {
@@ -131,10 +132,12 @@ export default function MkdSDK() {
       }
     );
     const isValid = await checkToken.json();
-    if (isValid.status === 200) {
+    console.log(isValid);
+    if (isValid.message === "OK") {
       return true;
+    } else {
+      return false;
     }
-    return false;
   };
 
   return this;

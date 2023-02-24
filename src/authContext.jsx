@@ -5,10 +5,10 @@ import MkdSDK from "./utils/MkdSDK";
 export const AuthContext = React.createContext();
 
 const initialState = {
-  isAuthenticated: false,
+  isAuthenticated: true,
   user: null,
-  token: null,
-  role: null,
+  token: localStorage.getItem("token"),
+  role: localStorage.getItem("role"),
 };
 
 const reducer = (state, action) => {
@@ -24,6 +24,7 @@ const reducer = (state, action) => {
         isAuthenticated: true,
         role: action.payload.role,
       };
+
     case "LOGOUT":
       localStorage.clear();
 
@@ -51,7 +52,7 @@ export const tokenExpireError = (dispatch, errorMessage) => {
 };
 const checkToken = async () => {
   const isValid = await sdk.check("admin");
-  return isValid;
+  console.log(isValid);
 };
 const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -60,6 +61,8 @@ const AuthProvider = ({ children }) => {
     //TODO
     if (!checkToken()) {
       tokenExpireError();
+    } else {
+      dispatch("LOGIN");
     }
   }, []);
 
