@@ -1,14 +1,49 @@
 import React from "react";
 import { useContext } from "react";
 import { useCallback } from "react";
-
+import { useDrag, useDrop } from "react-dnd";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AuthContext } from "../authContext";
-
+import update from "immutability-helper";
 const TableItem = (props) => {
+  const originalIndex = props.index;
+  const { id } = props;
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: "lol",
+      item: { id, originalIndex },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+      end: (item, monitor) => {
+        const { id: droppedId, originalIndex } = item;
+        const didDrop = monitor.didDrop();
+        if (!didDrop) {
+          props.moveCard(droppedId, originalIndex);
+        }
+      },
+    }),
+    [id, originalIndex, props.moveCard]
+  );
+  const [, drop] = useDrop(
+    () => ({
+      accept: "lol",
+      hover({ id: draggedId }) {
+        if (draggedId !== id) {
+          const { index: overIndex } = props.findCard(id);
+          props.moveCard(draggedId, overIndex);
+        }
+      },
+    }),
+    [props.findCard, props.moveCard]
+  );
   return (
-    <>
+    <ul
+      ref={(node) => drag(drop(node))}
+      style={{ border: isDragging ? "#7CDB00 1px solid" : "1px solid #696969" }}
+      className="rounded-lg p-4 list-style-none my-4 text-thin text-lg flex gap-10 items-center"
+    >
       <li>01</li>
       <li className="flex gap-6 w-2/4">
         <img
@@ -34,7 +69,7 @@ const TableItem = (props) => {
         </span>
       </li>
       <li className="flex items-center gap-2 text-white">
-        <span>{props.like}</span>
+        <span>{props?.like}</span>
         <svg
           width="14"
           height="18"
@@ -49,16 +84,43 @@ const TableItem = (props) => {
           />
         </svg>
       </li>
-    </>
+    </ul>
   );
 };
 const AdminDashboardPage = () => {
   const [tableData, setTableData] = useState([]);
   const [page, setPaginate] = useState(1);
   const [token, setToken] = useState("");
+  const [board, setBoard] = useState([]);
   const navigate = useNavigate();
   const { state, dispatch } = useContext(AuthContext);
-
+  const findCard = useCallback(
+    (id) => {
+      if (tableData.length > 0) {
+        const card = tableData.filter((c) => `${c?.id}` === id)[0];
+        return {
+          card,
+          index: tableData.indexOf(card),
+        };
+      }
+    },
+    [tableData]
+  );
+  const moveCard = useCallback(
+    (id, atIndex) => {
+      const { card, index } = findCard(id);
+      setTableData(
+        update(tableData, {
+          $splice: [
+            [index, 1],
+            [atIndex, 0, card],
+          ],
+        })
+      );
+    },
+    [findCard, tableData, setTableData]
+  );
+  const [, drop] = useDrop({ accept: "lol" });
   const getData = useCallback(async () => {
     if (token !== "") {
       let auth = `Bearer ${token}`;
@@ -200,25 +262,24 @@ const AdminDashboardPage = () => {
                     </svg>
                   </li>
                 </ul>
-
-                {tableData?.length > 0 &&
-                  tableData.map((tabledat, index) => {
-                    return (
-                      <ul
-                        key={index}
-                        style={{ border: "1px solid #696969" }}
-                        className="rounded-lg p-4 list-style-none my-4 text-thin text-lg flex gap-10 items-center"
-                      >
+                <div ref={drop}>
+                  {tableData?.length > 0 &&
+                    tableData.map((tabledat, index) => {
+                      return (
                         <TableItem
-                          like={tabledat.like}
-                          photo={tabledat.photo}
-                          id={tabledat.id}
-                          title={tabledat.title}
-                          username={tabledat.username}
+                          key={index}
+                          like={tabledat?.like}
+                          photo={tabledat?.photo}
+                          id={tabledat?.id}
+                          title={tabledat?.title}
+                          username={tabledat?.username}
+                          index={index}
+                          moveCard={moveCard}
+                          findCard={findCard}
                         ></TableItem>
-                      </ul>
-                    );
-                  })}
+                      );
+                    })}
+                </div>
               </div>
               <div className="self-end flex gap-4">
                 <button
