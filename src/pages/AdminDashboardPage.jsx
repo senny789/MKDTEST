@@ -6,43 +6,78 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AuthContext } from "../authContext";
 import update from "immutability-helper";
+import { useRef } from "react";
+
+const ItemTypes = {
+  CARD: "card",
+};
+
 const TableItem = (props) => {
   const originalIndex = props.index;
+  const ref = useRef(null);
   const { id } = props;
-  const [{ isDragging }, drag] = useDrag(
-    () => ({
-      type: "lol",
-      item: { id, originalIndex },
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
-      end: (item, monitor) => {
-        const { id: droppedId, originalIndex } = item;
-        const didDrop = monitor.didDrop();
-        if (!didDrop) {
-          props.moveCard(droppedId, originalIndex);
-        }
-      },
+
+  const [{ isDragging }, drag] = useDrag({
+    type: ItemTypes.CARD,
+    item: () => {
+      return { id, originalIndex };
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
     }),
-    [id, originalIndex, props.moveCard]
-  );
-  const [, drop] = useDrop(
-    () => ({
-      accept: "lol",
-      hover({ id: draggedId }) {
-        if (draggedId !== id) {
-          const { index: overIndex } = props.findCard(id);
-          props.moveCard(draggedId, overIndex);
-        }
-      },
-    }),
-    [props.findCard, props.moveCard]
-  );
+  });
+  const [{ handlerId }, drop] = useDrop({
+    accept: ItemTypes.CARD,
+    collect(monitor) {
+      return {
+        handlerId: monitor.getHandlerId(),
+      };
+    },
+    hover(item, monitor) {
+      if (!ref.current) {
+        return;
+      }
+      const dragIndex = item.originalIndex;
+      const hoverIndex = originalIndex;
+
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+
+      const hoverMiddleY =
+        (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+
+      const clientOffset = monitor.getClientOffset();
+
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+
+      props.moveCard(dragIndex, hoverIndex);
+
+      item.originalIndex = hoverIndex;
+    },
+  });
+
+  drag(drop(ref));
+
   return (
     <ul
-      ref={(node) => drag(drop(node))}
-      style={{ border: isDragging ? "#7CDB00 1px solid" : "1px solid #696969" }}
+      ref={ref}
+      style={{
+        border: isDragging ? "#7CDB00 1px solid" : "1px solid #696969",
+        padding: "10px",
+      }}
       className="rounded-lg p-4 list-style-none my-4 text-thin text-lg flex gap-10 items-center"
+      data-handler-id={handlerId}
     >
       <li>01</li>
       <li className="flex gap-6 w-2/4">
@@ -91,36 +126,34 @@ const AdminDashboardPage = () => {
   const [tableData, setTableData] = useState([]);
   const [page, setPaginate] = useState(1);
   const [token, setToken] = useState("");
-  const [board, setBoard] = useState([]);
+
   const navigate = useNavigate();
   const { state, dispatch } = useContext(AuthContext);
-  const findCard = useCallback(
-    (id) => {
-      if (tableData.length > 0) {
-        const card = tableData.filter((c) => `${c?.id}` === id)[0];
-        return {
-          card,
-          index: tableData.indexOf(card),
-        };
-      }
-    },
-    [tableData]
-  );
-  const moveCard = useCallback(
-    (id, atIndex) => {
-      const { card, index } = findCard(id);
-      setTableData(
-        update(tableData, {
-          $splice: [
-            [index, 1],
-            [atIndex, 0, card],
-          ],
-        })
-      );
-    },
-    [findCard, tableData, setTableData]
-  );
-  const [, drop] = useDrop({ accept: "lol" });
+
+  const moveCard = useCallback((dragIndex, hoverIndex) => {
+    setTableData((tableData) =>
+      update(tableData, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, tableData[dragIndex]],
+        ],
+      })
+    );
+  }, []);
+  const renderCard = useCallback((tabledat, index) => {
+    return (
+      <TableItem
+        key={index}
+        like={tabledat?.like}
+        photo={tabledat?.photo}
+        id={tabledat?.id}
+        title={tabledat?.title}
+        username={tabledat?.username}
+        index={index}
+        moveCard={moveCard}
+      ></TableItem>
+    );
+  }, []);
   const getData = useCallback(async () => {
     if (token !== "") {
       let auth = `Bearer ${token}`;
@@ -262,23 +295,11 @@ const AdminDashboardPage = () => {
                     </svg>
                   </li>
                 </ul>
-                <div ref={drop}>
+                <div>
                   {tableData?.length > 0 &&
-                    tableData.map((tabledat, index) => {
-                      return (
-                        <TableItem
-                          key={index}
-                          like={tabledat?.like}
-                          photo={tabledat?.photo}
-                          id={tabledat?.id}
-                          title={tabledat?.title}
-                          username={tabledat?.username}
-                          index={index}
-                          moveCard={moveCard}
-                          findCard={findCard}
-                        ></TableItem>
-                      );
-                    })}
+                    tableData.map((tabledat, index) =>
+                      renderCard(tabledat, index)
+                    )}
                 </div>
               </div>
               <div className="self-end flex gap-4">
