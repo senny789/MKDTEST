@@ -132,7 +132,7 @@ export default function MkdSDK() {
       }
     );
     const isValid = await checkToken.json();
-    console.log(isValid);
+
     if (isValid.message === "OK") {
       return true;
     } else {
